@@ -1,184 +1,195 @@
-Sub CreateNewProjectCharts_Final_FullFormat()
+Sub CreateIntegratedChartMatrix()
     '--- 1. 기본 설정 ---
     Dim dataSheetName As String
     dataSheetName = "##" ' ◀ 데이터가 있는 시트 이름
-    
 
-    '--- 2. 데이터 행 번호 정의 ---
-    Dim xRows As Variant
-    xRows = Array(##)
-    
+    '--- 2. Y축 데이터 설정 ---
     Dim yRows As Variant
     yRows = Array(##)
+    Dim fixedXRows As Object
+    Set fixedXRows = CreateObject("System.Collections.ArrayList")
+    Dim i As Long
+    ' 개별 행 추가
+    fixedXRows.Add 11: fixedXRows.Add 12: fixedXRows.Add 13: fixedXRows.Add 15: fixedXRows.Add 16
+    ' 범위로 행 추가
+    For i = 23 To 48: fixedXRows.Add i: Next i
+    For i = 54 To 57: fixedXRows.Add i: Next i
+    For i = 63 To 70: fixedXRows.Add i: Next i
+    
+    '--- ? 그룹 2: 필터링될 X축 데이터 설정 ---
+    Dim filteredXOffsets As Variant
+    filteredXOffsets = Array(5, 6, 14, 15) ' 6, 7, 15, 16번째 줄 (0부터 시작)
+    
+    Dim xSearchRangeAddress As String
+    xSearchRangeAddress = "B##:B##" ' 필터링을 수행할 B열 범위
 
-    '--- 3. 그래프 배치 및 크기 설정 ---
-    Dim chartWidth As Double, chartHeight As Double
+    '--- 4. 그래프 배치 및 크기 설정 ---
+    Dim chartWidth As Double, chartHeight As Double, chartsPerRow As Long
     chartHeight = Application.CentimetersToPoints(7.89)
     chartWidth = Application.CentimetersToPoints(12.66)
-    
-    Dim chartsPerRow As Long
-    chartsPerRow = UBound(xRows) - LBound(xRows) + 1
-
-    '--- 4. 축 범위 설정 (Dictionary) ---
-    Dim axisRanges As Object
-    Set axisRanges = CreateObject("Scripting.Dictionary")
-    
-    '--- ↓↓↓ 최종 축 제목과 일치하는 키(Key)와 범위를 입력하세요 ↓↓↓ ---
-    ' 예시 1 (일반 X축): C15셀의 값이 "항목A"인 경우
-    axisRanges.Add "##", Array(##, ###)
-    
+    chartsPerRow = fixedXRows.Count + (UBound(filteredXOffsets) - LBound(filteredXOffsets) + 1)
     
     '--- 5. 매크로 실행 ---
-    Dim ws As Worksheet
-    Dim xRow As Variant, yRow As Variant
-    Dim chartCounter As Long, startTopPosition As Double
-    Dim axisTitleText As String
-    
+    Dim ws As Worksheet, chartCounter As Long
     On Error GoTo ErrorHandler
-    
     Application.ScreenUpdating = False
     Set ws = ThisWorkbook.Sheets(dataSheetName)
     chartCounter = 0
-    startTopPosition = ws.Rows(180).Top
 
-    For Each yRow In yRows
-        For Each xRow In xRows
-            Dim chartTop As Double, chartLeft As Double
-            chartTop = startTopPosition + Int(chartCounter / chartsPerRow) * (chartHeight + 60)
-            chartLeft = 10 + (chartCounter Mod chartsPerRow) * (chartWidth + 15)
+    Dim yDataRow As Variant, xRow As Variant, startTopPosition As Double
+    startTopPosition = ws.Rows(##).Top
+    
+    ' --- 메인 루프: 모든 Y축 데이터를 순회 ---
+    For Each yDataRow In yRows
+        Dim yKeyRow As Long
+        yKeyRow = yDataRow - 1
+        
+        Dim yRange As Range, yTitlePart As String, yMainKey As String
+        Set yRange = Application.Union(ws.Range("E" & yDataRow), ws.Range("I" & yDataRow & ":K" & yDataRow))
+        yTitlePart = ws.Range("C" & yKeyRow).MergeArea.Cells(1, 1).Value & "_" & ws.Range("D" & yKeyRow).MergeArea.Cells(1, 1).Value
+        yMainKey = ws.Range("D" & yKeyRow).MergeArea.Cells(1, 1).Value
+        
+        ' --- A. 고정된 X축 목록과 그래프 생성 ---
+        For Each xRow In fixedXRows.ToArray
+            Dim xRange_Fixed As Range, xTitle_Fixed As String
+            Set xRange_Fixed = Application.Union(ws.Range("F" & xRow), ws.Range("I" & xRow & ":K" & xRow))
+            xTitle_Fixed = ws.Range("C" & xRow).MergeArea.Cells(1, 1).Value
             
-            Dim chrtObj As ChartObject
-            Set chrtObj = ws.ChartObjects.Add(chartLeft, chartTop, chartWidth, chartHeight)
-            
-            With chrtObj.Chart
-                .ChartType = xlXYScatter
-                .SeriesCollection.NewSeries
-                
-                With .SeriesCollection(1)
-                    .XValues = ws.Range("I" & xRow & ":K" & xRow)
-                    .Values = ws.Range("I" & yRow & ":K" & yRow)
-                    .MarkerStyle = xlMarkerStyleCircle
-                    .Trendlines.Add
-                    With .Trendlines(1)
-                        .Type = xlLinear
-                        .DisplayEquation = True
-                        .DisplayRSquared = True
-                        With .Format.Line
-                            .DashStyle = msoLineRoundDot
-                            .Weight = 1.5
-                            .ForeColor.ObjectThemeColor = msoThemeColorAccent1
-                        End With
-                    End With
-                End With
-                
-                .HasLegend = False
-                .HasTitle = True
-                
-                .chartTitle.Text = ws.Range("C" & yRow).MergeArea.Cells(1, 1).Value & "_" & ws.Range("D" & yRow).MergeArea.Cells(1, 1).Value
-                With .chartTitle.Format.TextFrame2.TextRange.Font
-                    .Name = "Calibri"
-                    .Size = 14
-                    .Fill.ForeColor.RGB = RGB(0, 0, 0)
-                    .Fill.ForeColor.Brightness = 0.35
-                End With
-
-                Dim lbl As DataLabel
-                Set lbl = .SeriesCollection(1).Trendlines(1).DataLabel
-                lbl.Left = .chartTitle.Left + .chartTitle.Width + 5
-                lbl.Top = .chartTitle.Top
-                lbl.Font.Size = 9
-                
-                ' X축 설정
-                With .Axes(xlCategory)
-                    .HasTitle = True
-                    
-                    ' X축 제목 생성 로직 (조건부)
-                    Select Case xRow
-                        Case 72, 73, 79, 80, 86, 87, 93, 94, 100, 101, 107, 108, 114, 115, 121, 122, 128, 129, 135, 136
-                            axisTitleText = ws.Range("D" & xRow).MergeArea.Cells(1, 1).Value
-                        Case Else
-                            axisTitleText = ws.Range("C" & xRow).MergeArea.Cells(1, 1).Value
-                    End Select
-                    .AxisTitle.Text = axisTitleText
-                    
-                    If axisRanges.Exists(axisTitleText) Then
-                        .MinimumScale = axisRanges(axisTitleText)(0)
-                        .MaximumScale = axisRanges(axisTitleText)(1)
-                    End If
-                    
-                    .HasMajorGridlines = True
-                    .HasMinorGridlines = True
-                    .MinorUnit = .MajorUnit
-                    
-                    With .AxisTitle.Format.TextFrame2.TextRange.Font
-                        .Name = "Calibri"
-                        .Size = 10
-                        .Fill.ForeColor.RGB = RGB(0, 0, 0)
-                        .Fill.ForeColor.Brightness = 0.35
-                    End With
-                    
-                    With .Format.Line
-                        .ForeColor.ObjectThemeColor = msoThemeColorBackground1
-                        .ForeColor.TintAndShade = -0.15
-                    End With
-                    With .MajorGridlines.Format.Line
-                        .ForeColor.ObjectThemeColor = msoThemeColorBackground1
-                        .ForeColor.TintAndShade = -0.15
-                    End With
-                    With .MinorGridlines.Format.Line
-                        .ForeColor.ObjectThemeColor = msoThemeColorBackground1
-                        .ForeColor.TintAndShade = -0.15
-                    End With
-                End With
-                
-                ' Y축 설정
-                With .Axes(xlValue)
-                    .HasTitle = True
-                    axisTitleText = ws.Range("C" & yRow).MergeArea.Cells(1, 1).Value
-                    .AxisTitle.Text = axisTitleText
-
-                    If axisRanges.Exists(axisTitleText) Then
-                        .MinimumScale = axisRanges(axisTitleText)(0)
-                        .MaximumScale = axisRanges(axisTitleText)(1)
-                    End If
-                    
-                    .HasMajorGridlines = True
-                    .HasMinorGridlines = True
-                    .MinorUnit = .MajorUnit
-
-                    With .AxisTitle.Format.TextFrame2.TextRange.Font
-                        .Name = "Calibri"
-                        .Size = 10
-                        .Fill.ForeColor.RGB = RGB(0, 0, 0)
-                        .Fill.ForeColor.Brightness = 0.35
-                    End With
-
-                    With .Format.Line
-                        .ForeColor.ObjectThemeColor = msoThemeColorBackground1
-                        .ForeColor.TintAndShade = -0.15
-                    End With
-                    With .MajorGridlines.Format.Line
-                        .ForeColor.ObjectThemeColor = msoThemeColorBackground1
-                        .ForeColor.TintAndShade = -0.15
-                    End With
-                    With .MinorGridlines.Format.Line
-                        .ForeColor.ObjectThemeColor = msoThemeColorBackground1
-                        .ForeColor.TintAndShade = -0.15
-                    End With
-                End With
-            End With
-            
+            Call CreateChartWithFullFormat(ws, chartCounter, chartsPerRow, startTopPosition, chartWidth, chartHeight, yRange, xRange_Fixed, yTitlePart, xTitle_Fixed)
             chartCounter = chartCounter + 1
         Next xRow
-    Next yRow
+        
+        ' --- B. 필터링된 X축 목록과 그래프 생성 ---
+        Dim foundBlockStartCell As Range
+        Set foundBlockStartCell = ws.Range(xSearchRangeAddress).Find(What:=yMainKey, LookIn:=xlValues, LookAt:=xlWhole)
+        
+        If Not foundBlockStartCell Is Nothing Then
+            Dim offset As Variant
+            For Each offset In filteredXOffsets
+                xRow = foundBlockStartCell.Row + offset
+                
+                Dim xRange_Filtered As Range, xTitle_Filtered As String
+                Set xRange_Filtered = Application.Union(ws.Range("E" & xRow), ws.Range("I" & xRow & ":K" & xRow))
+                xTitle_Filtered = ws.Range("D" & xRow).MergeArea.Cells(1, 1).Value
+                
+                Call CreateChartWithFullFormat(ws, chartCounter, chartsPerRow, startTopPosition, chartWidth, chartHeight, yRange, xRange_Filtered, yTitlePart, xTitle_Filtered)
+                chartCounter = chartCounter + 1
+            Next offset
+        End If
+    Next yDataRow
 
 CleanUp:
     Application.ScreenUpdating = True
-    MsgBox chartCounter & "개의 그래프 생성이 완료되었습니다.", vbInformation, "완료"
+    MsgBox "총 " & chartCounter & "개의 그래프 생성이 완료되었습니다.", vbInformation, "완료"
     Exit Sub
 
 ErrorHandler:
     MsgBox "오류가 발생했습니다: " & Err.Description & vbCrLf & vbCrLf & "VBA 편집기 > 도구 > 참조에서 'Microsoft Scripting Runtime'이 체크되었는지 확인하세요.", vbCritical, "오류"
+End Sub
+
+
+Private Sub CreateChartWithFullFormat(ws As Worksheet, ByVal chartCounter As Long, ByVal chartsPerRow As Long, ByVal startTop As Double, _
+                                      ByVal chartWidth As Double, ByVal chartHeight As Double, yRange As Range, xRange As Range, _
+                                      ByVal yTitle As String, ByVal xTitle As String)
+
+    
+    Dim chartTop As Double, chartLeft As Double
+    chartTop = startTop + Int(chartCounter / chartsPerRow) * (chartHeight + 60)
+    chartLeft = 10 + (chartCounter Mod chartsPerRow) * (chartWidth + 15)
+    
+    Dim chrtObj As ChartObject
+    Set chrtObj = ws.ChartObjects.Add(chartLeft, chartTop, chartWidth, chartHeight)
+    
+    With chrtObj.Chart
+        .ChartType = xlXYScatter
+        .SeriesCollection.NewSeries
+        
+        With .SeriesCollection(1)
+            .XValues = xRange
+            .Values = yRange
+            .MarkerStyle = xlMarkerStyleCircle
+            .Trendlines.Add
+            With .Trendlines(1)
+                .Type = xlLinear
+                .DisplayEquation = True
+                .DisplayRSquared = True
+                With .Format.Line
+                    .DashStyle = msoLineRoundDot
+                    .Weight = 1.5
+                    .ForeColor.ObjectThemeColor = msoThemeColorAccent1
+                End With
+            End With
+        End With
+        
+        .HasLegend = False
+        .HasTitle = True
+        .chartTitle.Text = yTitle
+        
+        With .chartTitle.Format.TextFrame2.TextRange.Font
+            .Name = "Calibri"
+            .Size = 14
+            .Fill.ForeColor.RGB = RGB(0, 0, 0)
+            .Fill.ForeColor.Brightness = 0.35
+        End With
+        
+        Dim lbl As DataLabel
+        Set lbl = .SeriesCollection(1).Trendlines(1).DataLabel
+        lbl.Left = .chartTitle.Left + .chartTitle.Width + 5
+        lbl.Top = .chartTitle.Top
+        lbl.Font.Size = 9
+        
+        With .Axes(xlCategory)
+            .HasTitle = True
+            .AxisTitle.Text = xTitle
+            .HasMajorGridlines = True
+            .HasMinorGridlines = True
+            .MinorUnit = .MajorUnit
+            With .AxisTitle.Format.TextFrame2.TextRange.Font
+                .Name = "Calibri"
+                .Size = 10
+                .Fill.ForeColor.RGB = RGB(0, 0, 0)
+                .Fill.ForeColor.Brightness = 0.35
+            End With
+            With .Format.Line
+                .ForeColor.ObjectThemeColor = msoThemeColorBackground1
+                .ForeColor.TintAndShade = -0.15
+            End With
+            With .MajorGridlines.Format.Line
+                .ForeColor.ObjectThemeColor = msoThemeColorBackground1
+                .ForeColor.TintAndShade = -0.15
+            End With
+            With .MinorGridlines.Format.Line
+                .ForeColor.ObjectThemeColor = msoThemeColorBackground1
+                .ForeColor.TintAndShade = -0.15
+            End With
+        End With
+        
+        With .Axes(xlValue)
+            .HasTitle = True
+            .AxisTitle.Text = yTitle
+            .HasMajorGridlines = True
+            .HasMinorGridlines = True
+            .MinorUnit = .MajorUnit
+            With .AxisTitle.Format.TextFrame2.TextRange.Font
+                .Name = "Calibri"
+                .Size = 10
+                .Fill.ForeColor.RGB = RGB(0, 0, 0)
+                .Fill.ForeColor.Brightness = 0.35
+            End With
+            With .Format.Line
+                .ForeColor.ObjectThemeColor = msoThemeColorBackground1
+                .ForeColor.TintAndShade = -0.15
+            End With
+            With .MajorGridlines.Format.Line
+                .ForeColor.ObjectThemeColor = msoThemeColorBackground1
+                .ForeColor.TintAndShade = -0.15
+            End With
+            With .MinorGridlines.Format.Line
+                .ForeColor.ObjectThemeColor = msoThemeColorBackground1
+                .ForeColor.TintAndShade = -0.15
+            End With
+        End With
+    End With
 End Sub
 
 
