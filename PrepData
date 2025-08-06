@@ -1,0 +1,123 @@
+Sub CreateSingleAnalysisSheet()
+    '--- 1. 기본 설정 ---
+    Dim dataSheetName As String
+    dataSheetName = "##" ' ◀ 원본 데이터가 있는 시트 이름
+
+    Dim resultsSheetName As String
+    resultsSheetName = "상관분석_데이터" ' ◀ 결과 표가 생성될 시트 이름
+
+    '--- 2. Y축 데이터 설정 ---
+    Dim yRows As Variant
+    yRows = Array(##)
+
+    '--- 3. X축 데이터 설정 ---
+    ' 그룹 1: 고정된 행 목록
+    Dim fixedXRows As Object
+    Set fixedXRows = CreateObject("System.Collections.ArrayList")
+    Dim i As Long
+    'fixedXRows.Add 15: fixedXRows.Add 16
+    For i = 23 To 48: fixedXRows.Add i: Next i
+    For i = 54 To 57: fixedXRows.Add i: Next i
+    For i = 63 To 70: fixedXRows.Add i: Next i
+    
+    ' 그룹 2: 필터링될 X축 데이터
+    Dim filteredXOffsets As Variant
+    filteredXOffsets = Array(5, 6, 14, 15)
+    
+    Dim xSearchRangeAddress As String
+    xSearchRangeAddress = "B##:B##"
+
+    '--- 4. 매크로 실행 ---
+    Dim ws As Worksheet, wsResults As Worksheet
+    On Error GoTo ErrorHandler
+    Application.ScreenUpdating = False
+    Set ws = ThisWorkbook.Sheets(dataSheetName)
+
+    ' 결과 시트 준비
+    Application.DisplayAlerts = False
+    On Error Resume Next
+    ThisWorkbook.Sheets(resultsSheetName).Delete
+    On Error GoTo ErrorHandler
+    Application.DisplayAlerts = True
+    
+    Set wsResults = ThisWorkbook.Sheets.Add(After:=ws)
+    wsResults.Name = resultsSheetName
+    
+    ' 헤더 작성
+    wsResults.Range("A1").Value = "변수명"
+    wsResults.Range("B1").Value = "그룹"
+    wsResults.Range("C1").Value = 1
+    wsResults.Range("D1").Value = 2
+    wsResults.Range("E1").Value = 3
+    
+    Dim outputRow As Long: outputRow = 2
+    
+    '--- 단계 1: 고정 X축 데이터 채우기 ---
+    Dim xRow As Variant, key As Variant
+    For Each xRow In fixedXRows.ToArray
+        wsResults.Cells(outputRow, 1).Value = ws.Range("C" + CStr(xRow)).MergeArea.Cells(1, 1).Value
+        wsResults.Cells(outputRow, 2).Value = "고정"
+        wsResults.Cells(outputRow, 3).Value = ws.Range("I" & xRow).Value
+        wsResults.Cells(outputRow, 4).Value = ws.Range("J" & xRow).Value
+        wsResults.Cells(outputRow, 5).Value = ws.Range("K" & xRow).Value
+        outputRow = outputRow + 1
+    Next xRow
+    
+    '--- 단계 2: 필터링 X축 데이터 채우기 ---
+    Dim uniqueFilteredRows As Object
+    Set uniqueFilteredRows = CreateObject("Scripting.Dictionary")
+    Dim yDataRow As Variant
+    
+    For Each yDataRow In yRows
+        Dim yKeyRow As Long, yMainKey As String
+        yKeyRow = yDataRow - 1
+        yMainKey = ws.Range("D" & yKeyRow).MergeArea.Cells(1, 1).Value
+        
+        Dim foundCell As Range
+        Set foundCell = ws.Range(xSearchRangeAddress).Find(What:=yMainKey, LookIn:=xlValues, LookAt:=xlWhole)
+        
+        If Not foundCell Is Nothing Then
+            Dim offset As Variant
+            For Each offset In filteredXOffsets
+                xRow = foundCell.Row + offset
+                ' 중복된 행은 추가하지 않음
+                If Not uniqueFilteredRows.Exists(xRow) Then
+                    uniqueFilteredRows.Add xRow, Nothing
+                    
+                    wsResults.Cells(outputRow, 1).Value = ws.Range("D" & xRow).MergeArea.Cells(1, 1).Value
+                    wsResults.Cells(outputRow, 2).Value = yMainKey ' 소속된 #숫자 그룹을 표시
+                    wsResults.Cells(outputRow, 3).Value = ws.Range("I" & xRow).Value
+                    wsResults.Cells(outputRow, 4).Value = ws.Range("J" & xRow).Value
+                    wsResults.Cells(outputRow, 5).Value = ws.Range("K" & xRow).Value
+                    outputRow = outputRow + 1
+                End If
+            Next offset
+        End If
+    Next yDataRow
+    
+    '--- 단계 3: Y축 데이터 채우기 ---
+    For Each yDataRow In yRows
+        yKeyRow = yDataRow - 1
+        wsResults.Cells(outputRow, 1).Value = ws.Range("C" & yKeyRow).MergeArea.Cells(1, 1).Value & "_" & ws.Range("D" & yKeyRow).MergeArea.Cells(1, 1).Value
+        wsResults.Cells(outputRow, 2).Value = "Y축"
+        wsResults.Cells(outputRow, 3).Value = ws.Range("I" & yDataRow).Value
+        wsResults.Cells(outputRow, 4).Value = ws.Range("J" & yDataRow).Value
+        wsResults.Cells(outputRow, 5).Value = ws.Range("K" & yDataRow).Value
+        outputRow = outputRow + 1
+    Next yDataRow
+    
+    '--- 서식 지정 및 필터 적용 ---
+    wsResults.UsedRange.Font.Name = "맑은 고딕"
+    wsResults.Columns("A:B").AutoFit
+    wsResults.Range("A1:E1").Font.Bold = True
+    wsResults.Rows(1).AutoFilter ' 1행에 필터 적용
+    
+CleanUp:
+    Application.ScreenUpdating = True
+    MsgBox "통합 분석용 시트 생성이 완료되었습니다.", vbInformation, "완료"
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "오류가 발생했습니다: " & Err.Description & vbCrLf & vbCrLf & "VBA 편집기 > 도구 > 참조에서 'Microsoft Scripting Runtime'이 체크되었는지 확인하세요.", vbCritical, "오류"
+
+End Sub
