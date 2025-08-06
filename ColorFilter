@@ -1,0 +1,92 @@
+Sub FormatCorrelationMatrix_5Levels()
+    '--- 1. 설정 ---
+    Dim resultsSheetName As String
+    resultsSheetName = "상관분석" ' ◀ 서식을 적용할 시트 이름
+    
+    '--- 2. 서식 규칙 및 색상 설정 (원하는 대로 수정 가능) ---
+    ' 규칙 1: 0.8 ~ 1.0
+    Dim threshold1 As Double: threshold1 = 0.8
+    Dim color1 As Long: color1 = RGB(217, 83, 79) ' 진한 빨간색
+    
+    ' 규칙 2: 0.6 ~ 0.8
+    Dim threshold2 As Double: threshold2 = 0.6
+    Dim color2 As Long: color2 = RGB(240, 173, 78) ' 주황색
+    
+    ' 규칙 3: 0.4 ~ 0.6
+    Dim threshold3 As Double: threshold3 = 0.4
+    Dim color3 As Long: color3 = RGB(255, 217, 102) ' 노란색
+    
+    ' 규칙 4: 0.2 ~ 0.4
+    Dim threshold4 As Double: threshold4 = 0.2
+    Dim color4 As Long: color4 = RGB(255, 242, 204) ' 연한 노란색
+    
+    ' 규칙 5: 자기 자신 (값이 1인 경우)
+    Dim self_Color As Long: self_Color = RGB(240, 240, 240) ' 연한 회색
+    '-------------------------------------------------
+    
+    '--- 변수 선언 ---
+    Dim ws As Worksheet
+    Dim dataRange As Range
+    
+    '--- 매크로 실행 ---
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(resultsSheetName)
+    If ws Is Nothing Then
+        MsgBox "'" & resultsSheetName & "' 시트를 찾을 수 없습니다. 먼저 상관계수 표를 생성해주세요.", vbCritical
+        Exit Sub
+    End If
+    On Error GoTo 0
+
+    Application.ScreenUpdating = False
+    
+    ' 서식을 적용할 숫자 데이터 범위 설정 (헤더 제외)
+    Set dataRange = ws.UsedRange.offset(1, 1).Resize(ws.UsedRange.Rows.Count - 1, ws.UsedRange.Columns.Count - 1)
+    
+    ' 기존 조건부 서식 삭제
+    dataRange.FormatConditions.Delete
+    
+    '--- 조건부 서식 규칙 추가 (값이 높은 순서대로) ---
+    Dim newRule As FormatCondition
+    
+    ' 규칙 5 (가장 먼저 적용): 자기 자신 (R = 1)
+    Set newRule = dataRange.FormatConditions.Add(Type:=xlCellValue, Operator:=xlEqual, Formula1:="=1")
+    With newRule
+        .Interior.Color = self_Color
+        .StopIfTrue = True
+    End With
+    
+    ' 규칙 1: |R| >= 0.8
+    Set newRule = dataRange.FormatConditions.Add(Type:=xlExpression, Formula1:="=ABS(" & dataRange.Cells(1, 1).Address(False, False) & ")>=" & threshold1)
+    With newRule
+        .Interior.Color = color1
+        .Font.Color = vbWhite
+        .Font.Bold = True
+        .StopIfTrue = True
+    End With
+    
+    ' 규칙 2: |R| >= 0.6
+    Set newRule = dataRange.FormatConditions.Add(Type:=xlExpression, Formula1:="=ABS(" & dataRange.Cells(1, 1).Address(False, False) & ")>=" & threshold2)
+    With newRule
+        .Interior.Color = color2
+        .StopIfTrue = True
+    End With
+    
+    ' 규칙 3: |R| >= 0.4
+    Set newRule = dataRange.FormatConditions.Add(Type:=xlExpression, Formula1:="=ABS(" & dataRange.Cells(1, 1).Address(False, False) & ")>=" & threshold3)
+    With newRule
+        .Interior.Color = color3
+        .StopIfTrue = True
+    End With
+    
+    ' 규칙 4: |R| >= 0.2
+    Set newRule = dataRange.FormatConditions.Add(Type:=xlExpression, Formula1:="=ABS(" & dataRange.Cells(1, 1).Address(False, False) & ")>=" & threshold4)
+    With newRule
+        .Interior.Color = color4
+        .StopIfTrue = True
+    End With
+
+    Application.ScreenUpdating = True
+    ws.Activate
+    MsgBox "상관계수 표에 5단계 조건부 서식 적용이 완료되었습니다.", vbInformation, "완료"
+    
+End Sub
