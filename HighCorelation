@@ -1,0 +1,193 @@
+Sub CreateSignificantCorrelationCharts_V9_Final()
+
+    '--- 1. 설정 ---
+    
+    Dim sourceDataSheetName As String
+    sourceDataSheetName = "#" ' ◀ 원본 데이터 시트
+    
+    Dim analysisSheetName As String
+    analysisSheetName = "##" ' ◀ 상관분석 결과 시트
+    
+    Dim chartSheetName As String
+    chartSheetName = "##" ' ◀ 최종 그래프 새 시트
+    
+    Dim correlationThreshold As Double
+    correlationThreshold = 0.8 ' ◀ 임계값 (이상)
+    
+    
+    '---------------------------------------------------------------------
+
+
+    '--- 2. 매크로 실행 ---
+    Dim wsSource As Worksheet, wsAnalysis As Worksheet, wsCharts As Worksheet
+    Dim xRange As Range, yRange As Range
+    Dim xAxisTitle As String, yAxisTitle As String
+    Dim xRow As Variant, yRow As Variant
+    Dim r As Long, c As Long
+    Dim chartCounter As Long, tableRow As Long
+    
+    On Error GoTo ErrorHandler
+    Application.ScreenUpdating = False
+    
+    Set wsSource = ThisWorkbook.Sheets(sourceDataSheetName)
+    Set wsAnalysis = ThisWorkbook.Sheets(analysisSheetName)
+    
+    Application.DisplayAlerts = False
+    On Error Resume Next
+    ThisWorkbook.Sheets(chartSheetName).Delete
+    On Error GoTo ErrorHandler
+    Application.DisplayAlerts = True
+    
+    Set wsCharts = ThisWorkbook.Sheets.Add(After:=wsAnalysis)
+    wsCharts.Name = chartSheetName
+    
+    chartCounter = 0
+    tableRow = 2
+    
+    With wsCharts
+        .Range("AC1").Value = "Y축 항목"
+        .Range("AD1").Value = "X축 항목"
+        .Range("AE1").Value = "상관계수(R)"
+        .Range("AC1:AE1").Font.Bold = True
+    End With
+    
+    Dim lastRow As Long, lastCol As Long
+    lastRow = wsAnalysis.Cells(wsAnalysis.Rows.Count, 1).End(xlUp).Row ' A열 기준 마지막 행
+    lastCol = wsAnalysis.Cells(1, wsAnalysis.Columns.Count).End(xlToLeft).Column ' 1행 기준 마지막 열
+
+    For r = 2 To lastRow ' Y축 항목 (A열 마지막 행까지)
+        For c = 2 To lastCol ' X축 항목 (1행 마지막 열까지)
+            
+            Dim corrValue As Variant
+            corrValue = wsAnalysis.Cells(r, c).Value
+            
+            If IsNumeric(corrValue) And Abs(corrValue) >= correlationThreshold And Abs(corrValue) < 1 Then
+                
+                yAxisTitle = wsAnalysis.Cells(r, 1).Value
+                xAxisTitle = wsAnalysis.Cells(1, c).Value
+                
+                yRow = Application.Match(yAxisTitle, wsSource.Columns("A"), 0)
+                xRow = Application.Match(xAxisTitle, wsSource.Columns("A"), 0)
+                
+                If Not IsError(yRow) And Not IsError(xRow) Then
+                    
+                    '--- 그래프 생성 범위 설정 ---
+                    Set yRange = wsSource.Range("B" & yRow & ":F" & yRow)
+                    Set xRange = wsSource.Range("B" & xRow & ":F" & xRow)
+                    
+                    Dim chartWidth As Double, chartHeight As Double, chartsPerRow As Long
+                    chartHeight = Application.CentimetersToPoints(10)
+                    chartWidth = Application.CentimetersToPoints(15)
+                    chartsPerRow = 3
+                    
+                    Dim chartTop As Double, chartLeft As Double
+                    chartTop = 10 + Int(chartCounter / chartsPerRow) * (chartHeight + 40)
+                    chartLeft = 10 + (chartCounter Mod chartsPerRow) * (chartWidth + 15)
+                    
+                    Dim chrtObj As ChartObject
+                    Set chrtObj = wsCharts.ChartObjects.Add(chartLeft, chartTop, chartWidth, chartHeight)
+                    
+                    Call ApplyFinalFormatting(chrtObj.Chart, yRange, xRange, yAxisTitle, xAxisTitle, CDbl(corrValue))
+                    
+                    chartCounter = chartCounter + 1
+                    
+                    '--- 요약 표 내용 작성 ---
+                    wsCharts.Range("AC" & tableRow).Value = yAxisTitle
+                    wsCharts.Range("AD" & tableRow).Value = xAxisTitle
+                    wsCharts.Range("AE" & tableRow).Value = CDbl(corrValue)
+                    tableRow = tableRow + 1
+                    
+                End If
+            End If
+        Next c
+    Next r
+    
+    wsCharts.Columns("AC:AE").AutoFit
+
+CleanUp:
+    Application.ScreenUpdating = True
+    If chartCounter > 0 Then
+        MsgBox "총 " & chartCounter & "개의 유의미한 상관관계 그래프 생성이 완료되었습니다.", vbInformation, "완료"
+    Else
+        MsgBox "지정한 임계값(" & correlationThreshold & ") 이상의 상관관계를 찾지 못했습니다.", vbInformation, "완료"
+    End If
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "오류가 발생했습니다: " & Err.Description, vbCritical, "오류"
+End Sub
+
+
+Private Sub ApplyFinalFormatting(ByVal chrt As Chart, yRange As Range, xRange As Range, ByVal yTitle As String, ByVal xTitle As String, originalR As Double)
+    With chrt
+        .ChartType = xlXYScatter
+        .SeriesCollection.NewSeries
+        
+        Dim rSquaredText As String
+        
+        With .SeriesCollection(1)
+            .XValues = xRange
+            .Values = yRange
+            .MarkerStyle = xlMarkerStyleCircle
+            .MarkerSize = 5
+            .Format.Line.Visible = msoFalse
+            .Trendlines.Add
+            With .Trendlines(1)
+                .Type = xlLinear
+                .DisplayEquation = True
+                .DisplayRSquared = True
+                rSquaredText = .DataLabel.Text
+                With .Format.Line
+                    .DashStyle = msoLineRoundDot
+                    .Weight = 1.5
+                    .ForeColor.RGB = RGB(80, 80, 80)
+                End With
+            End With
+        End With
+        
+        .HasLegend = False
+        .HasTitle = True
+        .ChartTitle.Text = yTitle & " (원본 R=" & Format(originalR, "0.00") & ")"
+        
+        With .ChartTitle.Format.TextFrame2.TextRange.Font
+            .Name = "Calibri"
+            .Size = 12
+        End With
+        
+        With .SeriesCollection(1).Trendlines(1).DataLabel
+            .Font.Size = 9
+            .Font.Bold = True
+        End With
+        
+        With .Axes(xlCategory) ' X축
+            .HasTitle = True
+            .AxisTitle.Text = xTitle
+            .HasMajorGridlines = True
+            .HasMinorGridlines = True
+            If Application.WorksheetFunction.Max(xRange) > Application.WorksheetFunction.Min(xRange) Then
+                .MinimumScale = Application.WorksheetFunction.Min(xRange) * 0.9
+                .MaximumScale = Application.WorksheetFunction.Max(xRange) * 1.1
+            End If
+            If .MajorUnit > 0 Then .MinorUnit = .MajorUnit
+            .AxisTitle.Font.Size = 10
+            .MajorGridlines.Format.Line.ForeColor.RGB = RGB(220, 220, 220)
+            .MinorGridlines.Format.Line.ForeColor.RGB = RGB(240, 240, 240)
+        End With
+        
+        With .Axes(xlValue) ' Y축
+            .HasTitle = True
+            .AxisTitle.Text = yTitle
+            .HasMajorGridlines = True
+            .HasMinorGridlines = True
+            If Application.WorksheetFunction.Max(yRange) > Application.WorksheetFunction.Min(yRange) Then
+                .MinimumScale = Application.WorksheetFunction.Min(yRange) * 0.9
+                .MaximumScale = Application.WorksheetFunction.Max(yRange) * 1.1
+            End If
+            If .MajorUnit > 0 Then .MinorUnit = .MajorUnit
+            .AxisTitle.Font.Size = 10
+            .MajorGridlines.Format.Line.ForeColor.RGB = RGB(220, 220, 220)
+            .MinorGridlines.Format.Line.ForeColor.RGB = RGB(240, 240, 240)
+        End With
+    End With
+End Sub
+
