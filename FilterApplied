@@ -1,4 +1,6 @@
 Sub CreateFinalGroupMatchedCharts_Completed()
+    ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
+
     '--- 1. 기본 설정 ---
     Dim dataSheetName As String
     dataSheetName = "##" ' ◀ 데이터가 있는 시트 이름
@@ -99,7 +101,7 @@ Sub CreateFinalGroupMatchedCharts_Completed()
                         
                         .HasLegend = False
                         .HasTitle = True
-                        
+                        ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
                         Dim yTitlePart As String, xTitlePart As String
                         yTitlePart = ws.Range("C" & yRow).MergeArea.Cells(1, 1).Value & "_" & ws.Range("D" & yRow).MergeArea.Cells(1, 1).Value
                         xTitlePart = ws.Range("C" & xRow).MergeArea.Cells(1, 1).Value
@@ -143,7 +145,7 @@ Sub CreateFinalGroupMatchedCharts_Completed()
                                 .ForeColor.TintAndShade = -0.15
                             End With
                         End With
-                        
+                        ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
                         With .Axes(xlValue)
                             .HasTitle = True
                             .AxisTitle.Text = yTitlePart
@@ -181,7 +183,7 @@ CleanUp:
     Application.ScreenUpdating = True
     MsgBox "총 " & chartCounter & "개의 그래프 생성이 완료되었습니다.", vbInformation, "완료"
     Exit Sub
-
+' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
 ErrorHandler:
     MsgBox "오류가 발생했습니다: " & Err.Description, vbCritical, "오류"
 End Sub
