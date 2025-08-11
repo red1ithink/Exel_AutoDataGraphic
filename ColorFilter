@@ -1,4 +1,5 @@
 Sub FormatCorrelationMatrix_5Levels()
+    ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
     '--- 1. 설정 ---
     Dim resultsSheetName As String
     resultsSheetName = "상관분석" ' ◀ 서식을 적용할 시트 이름
@@ -84,7 +85,7 @@ Sub FormatCorrelationMatrix_5Levels()
         .Interior.Color = color4
         .StopIfTrue = True
     End With
-
+    ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
     Application.ScreenUpdating = True
     ws.Activate
     MsgBox "상관계수 표에 5단계 조건부 서식 적용이 완료되었습니다.", vbInformation, "완료"
