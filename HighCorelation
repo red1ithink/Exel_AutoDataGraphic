@@ -1,5 +1,5 @@
 Sub CreateSignificantCorrelationCharts_V9_Final()
-
+    ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
     '--- 1. 설정 ---
     
     Dim sourceDataSheetName As String
@@ -144,7 +144,7 @@ Private Sub ApplyFinalFormatting(ByVal chrt As Chart, yRange As Range, xRange As
                 End With
             End With
         End With
-        
+        ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
         .HasLegend = False
         .HasTitle = True
         .ChartTitle.Text = yTitle & " (원본 R=" & Format(originalR, "0.00") & ")"
@@ -189,5 +189,6 @@ Private Sub ApplyFinalFormatting(ByVal chrt As Chart, yRange As Range, xRange As
             .MinorGridlines.Format.Line.ForeColor.RGB = RGB(240, 240, 240)
         End With
     End With
+' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
 End Sub
 
