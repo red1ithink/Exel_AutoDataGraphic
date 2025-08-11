@@ -1,5 +1,5 @@
 Sub ExtractChartData_Robust()
-
+    ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
     '--- 1. 설정: 시트 이름을 정확하게 입력하세요 ---
     Dim chartsSheetName As String
     chartsSheetName = "##" ' ◀ 그래프들이 있는 시트 이름
@@ -70,7 +70,7 @@ Sub ExtractChartData_Robust()
                 ' 정보 추출을 위해 레이블을 잠시 강제로 켬
                 TLine.DisplayEquation = True
                 TLine.DisplayRSquared = True
-                
+                ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
                 Dim trendLabelText As String
                 trendLabelText = TLine.DataLabel.Text
                 
@@ -112,7 +112,7 @@ Sub ExtractChartData_Robust()
             outputRow = outputRow + 1
         End With
     Next chrtObj
-    
+    ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
     Application.ScreenUpdating = True
     wsResults.Columns("A:G").AutoFit
     MsgBox "총 " & wsCharts.ChartObjects.Count & "개 그래프의 정보 추출이 완료되었습니다.", vbInformation, "완료"
