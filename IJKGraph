@@ -1,4 +1,6 @@
 Sub CreateIntegratedChartMatrix()
+    ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
+
     '--- 1. 기본 설정 ---
     Dim dataSheetName As String
     dataSheetName = "##" ' ◀ 데이터가 있는 시트 이름
@@ -120,7 +122,7 @@ Private Sub CreateChartWithFullFormat(ws As Worksheet, ByVal chartCounter As Lon
                 End With
             End With
         End With
-        
+        ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
         .HasLegend = False
         .HasTitle = True
         .chartTitle.Text = yTitle
@@ -190,6 +192,7 @@ Private Sub CreateChartWithFullFormat(ws As Worksheet, ByVal chartCounter As Lon
             End With
         End With
     End With
+' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
 End Sub
 
 
