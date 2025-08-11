@@ -1,4 +1,5 @@
 Sub CreateSingleAnalysisSheet()
+    ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
     '--- 1. 기본 설정 ---
     Dim dataSheetName As String
     dataSheetName = "##" ' ◀ 원본 데이터가 있는 시트 이름
@@ -75,7 +76,7 @@ Sub CreateSingleAnalysisSheet()
         
         Dim foundCell As Range
         Set foundCell = ws.Range(xSearchRangeAddress).Find(What:=yMainKey, LookIn:=xlValues, LookAt:=xlWhole)
-        
+        ' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
         If Not foundCell Is Nothing Then
             Dim offset As Variant
             For Each offset In filteredXOffsets
@@ -119,5 +120,5 @@ CleanUp:
 
 ErrorHandler:
     MsgBox "오류가 발생했습니다: " & Err.Description & vbCrLf & vbCrLf & "VBA 편집기 > 도구 > 참조에서 'Microsoft Scripting Runtime'이 체크되었는지 확인하세요.", vbCritical, "오류"
-
+' Author: Juseong Kim (김주성) – Mechanical Engineering, Kyung Hee University
 End Sub
