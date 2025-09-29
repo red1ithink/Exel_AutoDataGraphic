@@ -1,0 +1,108 @@
+Sub TransferSimulationData()
+
+    Dim wbSim As Workbook
+    Dim wbReport As Workbook
+    
+    Dim wsSimReport As Worksheet
+    Dim wsSimNoise As Worksheet
+    Dim wsReport As Worksheet
+    
+    Dim simFileName As String
+    Dim reportFileName As String
+    Dim targetColumn As String
+    
+    simFileName = "##"
+    reportFileName = "##" 
+    
+    On Error GoTo ErrorHandler
+
+    targetColumn = UCase(InputBox("문자열 (예: E)", "대상 열 입력"))
+    If targetColumn = "" Then Exit Sub
+
+
+    On Error Resume Next
+    Set wbSim = Workbooks(simFileName)
+    Set wbReport = Workbooks(reportFileName)
+    On Error GoTo ErrorHandler
+    
+    If wbSim Is Nothing Then
+        MsgBox simFileName & "Open the File", vbCritical, "오류"
+        Exit Sub
+    End If
+    
+    If wbReport Is Nothing Then
+        MsgBox reportFileName & "Open the File", vbCritical, "오류"
+        Exit Sub
+    End If
+
+    Set wsSimReport = wbSim.Sheets("##")
+    Set wsSim## = wbSim.Sheets("##")
+    Set wsReport = wbReport.ActiveSheet
+    
+    Application.ScreenUpdating = False
+    On Error Resume Next
+    wsSimNoise.Shapes("그림 ##").Copy
+
+    If Err.Number <> 0 Then
+        MsgBox "No Pic", vbExclamation, "오류"
+        Err.Clear
+        GoTo SkipImagePaste
+    End If
+    On Error GoTo ErrorHandler
+
+    wsReport.Paste wsReport.Range(targetColumn & "##")
+
+    With Selection.ShapeRange
+        .LockAspectRatio = msoFalse
+        .Height = Application.CentimetersToPoints(##)
+        .Width = Application.CentimetersToPoints(##)
+    End With
+
+    SkipImagePaste:
+
+    With wsReport
+
+        .Range(targetColumn & "##").Value = "##"
+        .Range(targetColumn & "##").Value = wsSimReport.Range("##").Value
+        
+
+        .Range(targetColumn & "##").Value = wsSimReport.Range("##").Value & "/" & wsSimReport.Range("##").Value & "/" & wsSimReport.Range("##").Value & "/" & wsSimReport.Range("##").Value & "/" & wsSimReport.Range("##").Value
+        
+
+        .Range(targetColumn & "##").Value = wsSimReport.Evaluate("MAX(##:##) - MIN(##:##)")
+        
+
+        .Range(targetColumn & "##").Value = Val(Replace(wsSimReport.Range("##").Value, " (%)", ""))
+        .Range(targetColumn & "##").Value = Val(Replace(wsSimReport.Range("##").Value, " (%)", ""))
+        .Range(targetColumn & "##").Value = Val(Replace(wsSimReport.Range("##").Value, " (%)", ""))
+        
+
+        .Range(targetColumn & "##").Formula = "=" & targetColumn & "##-" & targetColumn & "##"
+
+        .Range(targetColumn & "##").Value = wsSimReport.Range("##").Value & "/" & wsSimReport.Range("##").Value & "/" & wsSimReport.Range("##").Value & "/" & wsSimReport.Range("##").Value & "/" & wsSimReport.Range("##").Value
+        
+
+        .Range(targetColumn & "##").Formula = "=" & targetColumn & "##/" & targetColumn & "##"
+        .Range(targetColumn & "##").Formula = "=(" & targetColumn & "##+" & targetColumn & "##+" & targetColumn & "##)/(" & targetColumn & "##+" & targetColumn & "##)"
+
+        .Range(targetColumn & "41").Formula = "=SUM(" & targetColumn & "##:" & targetColumn & "##)"
+        .Range(targetColumn & "42").Formula = "=SUM(" & targetColumn & "##:" & targetColumn & "##)"
+
+        
+        With .Range(targetColumn & "##:" & targetColumn & "##")
+            .Font.Name = "맑은 고딕"
+            .Font.Size = ##
+            .HorizontalAlignment = xlCenter
+        End With
+    End With
+    
+    Application.ScreenUpdating = True
+
+    MsgBox "Copied", vbInformation, "완료"
+    Exit Sub
+
+ErrorHandler:
+    Application.ScreenUpdating = True
+    MsgBox "Error: " & vbCrLf & Err.Description, vbCritical, "오류 발생"
+End Sub
+
