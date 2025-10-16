@@ -1,0 +1,45 @@
+Sub ConvertJColumnToDate()
+
+    ' 변수 선언
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim cell As Range
+    Dim dateString As String
+    
+    ' 에러 발생 시 계속 진행하도록 설정 (빈 셀 등의 경우)
+    On Error Resume Next
+    
+    ' 현재 활성화된 시트를 대상으로 설정
+    Set ws = ThisWorkbook.ActiveSheet
+    
+    ' J열의 마지막 데이터 행 번호 찾기
+    lastRow = ws.Cells(ws.Rows.Count, "L").End(xlUp).Row
+    
+    ' 1행부터 마지막 행까지 반복 (만약 1행이 제목(Header)이면 For i = 2 To lastRow 로 변경)
+    For i = 1 To lastRow
+        ' J열의 i번째 셀을 대상으로 설정
+        Set cell = ws.Cells(i, "L")
+        
+        ' 셀이 비어있지 않고, 길이가 8자 이상인 경우에만 실행
+        If Not IsEmpty(cell.Value) And Len(cell.Value) >= 8 Then
+        
+            ' 1. 앞 8글자만 추출
+            dateString = Left(cell.Value, 8)
+            
+            ' 2. 추출한 8자리 텍스트를 날짜 데이터로 변환하여 셀에 다시 입력
+            '    DateSerial(연, 월, 일) 함수를 사용하여 정확하게 날짜로 변환
+            cell.Value = DateSerial(Left(dateString, 4), Mid(dateString, 5, 2), Right(dateString, 2))
+            
+            ' 3. 셀 서식을 "yyyy-mm-dd" 형식으로 변경 (원하는 형식으로 수정 가능)
+            cell.NumberFormat = "yyyy-mm-dd"
+            
+        End If
+    Next i
+    
+    ' 에러 처리 초기화
+    On Error GoTo 0
+    
+    MsgBox "J열의 데이터가 날짜 형식으로 모두 변경되었습니다.", vbInformation
+
+End Sub
