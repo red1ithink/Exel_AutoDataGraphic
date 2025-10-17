@@ -1,0 +1,158 @@
+Sub CompareWorkbooks_AccurateFinal()
+    ' =================================================================
+    Const OLD_FILENAME As String = "##.xlsx"
+    Const OLD_SHEETNAME As String = "##"
+
+    Const NEW_FILENAME As String = "##.xlsx"
+    Const NEW_SHEETNAME As String = "##"
+
+    ' 2. 헤더 설정
+    Const OLD_HEADER_ID As String = "##"       ' 의뢰번호가 있는 열 이름
+    Const OLD_HEADER_REQ_DATE As String = "##" ' 의뢰일이 있는 열 이름
+    Const OLD_HEADER_COMP_DATE As String = "##"  ' 완료일이 있는 열 이름
+
+    ' [새 파일: new.xlsx]
+    Const NEW_HEADER_REQ_DATE As String = "##" ' 의뢰일이 있는 열 이름
+    Const NEW_HEADER_COMP_DATE As String = "##"  ' 완료일이 있는 열 이름
+    ' --------------------------------
+
+    ' 변수 선언
+    Dim oldWB As Workbook, newWB As Workbook
+    Dim oldWS As Worksheet, newWS As Worksheet
+    Dim reportWS As Worksheet
+    Dim i As Long, j As Long ' i는 new.xlsx, j는 old.xlsx를 위한 반복 변수
+
+    ' 열 번호 변수
+    Dim oldColReq As Long, oldColComp As Long
+    Dim newColReq As Long, newColComp As Long
+    
+    On Error GoTo ErrorHandler
+
+    ' --- 1. 파일 및 시트 참조 ---
+    Application.ScreenUpdating = False
+    
+    Set oldWB = Workbooks(OLD_FILENAME)
+    Set newWB = Workbooks(NEW_FILENAME)
+    Set oldWS = oldWB.Worksheets(OLD_SHEETNAME)
+    Set newWS = newWB.Worksheets(NEW_SHEETNAME)
+
+    ' --- 2. 열 번호 찾기 ---
+    oldColReq = FindColNum(oldWS, OLD_HEADER_REQ_DATE)
+    oldColComp = FindColNum(oldWS, OLD_HEADER_COMP_DATE)
+    
+    newColReq = FindColNum(newWS, NEW_HEADER_REQ_DATE)
+    newColComp = FindColNum(newWS, NEW_HEADER_COMP_DATE)
+
+    ' --- 3. 결과 시트 준비 ---
+    Set reportWS = newWS.Sheets.Add
+    reportWS.Name = "변동사항"
+    newWS.Rows(1).Range("A1:U1").Copy reportWS.Rows(1).Range("A1")
+    reportWS.Cells(1, "V").Value = "변동 사유"
+    Dim reportRow As Long
+    reportRow = 2
+
+    ' --- 4. 새 데이터(new.xlsx)의 모든 행을 기준으로 반복 (i) ---
+    Dim newLastRow As Long, oldLastRow As Long
+    newLastRow = newWS.Cells(newWS.Rows.Count, "A").End(xlUp).Row
+    oldLastRow = oldWS.Cells(oldWS.Rows.Count, "A").End(xlUp).Row
+    
+    For i = 2 To newLastRow
+        Dim newRequestID As String, newRequestDate As String, newCompositeKey As String
+        Dim reason As String
+        
+        ' 새 파일의 비교 키 생성
+        newRequestID = Trim(newWS.Cells(i, "A").Value) & "-" & Trim(newWS.Cells(i, "B").Value)
+        newRequestDate = GetFormattedDate(newWS.Cells(i, newColReq).Value)
+        
+        If newRequestID = "-" Or newRequestDate = "" Then GoTo NextNewRow
+        
+        newCompositeKey = newRequestID & "|" & newRequestDate
+        
+        Dim matchFound As Boolean, oldStatusIsUncompleted As Boolean
+        matchFound = False
+        oldStatusIsUncompleted = False
+
+        ' --- 5. 이전 데이터(old.xlsx)의 모든 행과 대조 (j) ---
+        For j = 2 To oldLastRow
+            Dim oldRequestID As String, oldRequestDate As String, oldCompositeKey As String
+            
+            ' 이전 파일의 비교 키 생성
+            oldRequestID = Trim(oldWS.Cells(j, "A").Value)
+            oldRequestDate = GetFormattedDate(oldWS.Cells(j, oldColReq).Value)
+            
+            If oldRequestID = "" Or oldRequestDate = "" Then GoTo NextOldRow
+            
+            oldCompositeKey = oldRequestID & "|" & oldRequestDate
+            
+            ' 키가 일치하는지 확인
+            If newCompositeKey = oldCompositeKey Then
+                matchFound = True ' 일치하는 건을 찾았음
+                ' 완료일이 비어있으면 미완료 상태로 기록하고, 더 이상 찾을 필요 없으므로 반복 중단
+                If Trim(oldWS.Cells(j, oldColComp).Value) = "" Then
+                    oldStatusIsUncompleted = True
+                    Exit For ' 최적화: 미완료 건을 찾았으면 바로 내부 반복 종료
+                End If
+            End If
+NextOldRow:
+        Next j
+        
+        ' --- 6. 최종 판정 ---
+        reason = ""
+        Dim isNewCompleted As Boolean
+        isNewCompleted = IsNewDateCompleted(newWS.Cells(i, newColComp).Value)
+
+        If Not matchFound Then
+            reason = "신규 추가"
+        ElseIf oldStatusIsUncompleted And isNewCompleted Then
+            reason = "완료일 업데이트"
+        End If
+        
+        If reason <> "" Then
+            newWS.Rows(i).Range("A1:U1").Copy reportWS.Cells(reportRow, "A")
+            reportWS.Cells(reportRow, "A").Value = newRequestID
+            reportWS.Cells(reportRow, "V").Value = reason
+            reportRow = reportRow + 1
+        End If
+NextNewRow:
+    Next i
+
+    ' --- 7. 마무리 ---
+    reportWS.Columns("A:V").AutoFit
+    Application.ScreenUpdating = True
+    MsgBox "Check New sheet", vbInformation, "Completed"
+    Exit Sub
+
+' --- 에러 핸들러 ---
+ErrorHandler:
+    If Err.Number <> 0 Then MsgBox "오류: " & Err.Description, vbCritical
+    Application.ScreenUpdating = True
+End Sub
+
+Private Function FindColNum(ws As Worksheet, colName As String) As Long
+    Dim foundCell As Range
+    If ws Is Nothing Then Exit Function
+    Set foundCell = ws.Rows(1).Find(What:=colName, LookIn:=xlValues, LookAt:=xlWhole, MatchCase:=False)
+    If Not foundCell Is Nothing Then FindColNum = foundCell.Column Else MsgBox "필수 열 '" & colName & "'을(를) '" & ws.Parent.Name & "' 파일에서 찾을 수 없습니다.", vbCritical: End
+End Function
+
+Private Function GetFormattedDate(cellValue As Variant) As String
+    If IsDate(cellValue) Then
+        GetFormattedDate = Format(cellValue, "yyyy-mm-dd")
+    ElseIf Len(Trim(CStr(cellValue))) >= 8 And IsNumeric(Left(Trim(CStr(cellValue)), 8)) Then
+        Dim datePart As String
+        datePart = Left(Trim(CStr(cellValue)), 8)
+        GetFormattedDate = Format(DateSerial(Left(datePart, 4), Mid(datePart, 5, 2), Right(datePart, 2)), "yyyy-mm-dd")
+    Else
+        GetFormattedDate = ""
+    End If
+End Function
+
+Private Function IsNewDateCompleted(cellValue As Variant) As Boolean
+    If IsDate(cellValue) Then
+        IsNewDateCompleted = True
+    ElseIf Len(Trim(CStr(cellValue))) >= 8 And IsNumeric(Left(Trim(CStr(cellValue)), 8)) Then
+        IsNewDateCompleted = True
+    Else
+        IsNewDateCompleted = False
+    End If
+End Function

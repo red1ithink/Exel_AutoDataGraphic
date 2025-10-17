@@ -1,0 +1,72 @@
+Sub Debug_Key_Generation()
+
+    ' =================================================================
+    ' [진단용 코드] 두 파일에서 비교 키가 어떻게 생성되는지 확인
+    ' =================================================================
+
+    Dim choice As VbMsgBoxResult
+    choice = MsgBox("어떤 파일의 키 생성을 확인하시겠습니까?" & vbCrLf & vbCrLf & _
+                    "Yes: 이전 파일 (##.xlsx)" & vbCrLf & _
+                    "No: 새 파일 (##.xlsx)", vbYesNo, "진단 대상 선택")
+
+    Dim ws As Worksheet
+    Dim lastRow As Long, i As Long
+    Dim result As String
+    
+    On Error GoTo ErrorHandler
+
+    If choice = vbYes Then
+        ' --- 이전 파일(##.xlsx) 진단 ---
+        Dim oldFileName As String, oldSheetName As String
+        oldFileName = InputBox("이전 파일의 전체 이름(확장자 포함)을 입력하세요:", "파일 이름", "##.xlsx")
+        oldSheetName = InputBox("'" & oldFileName & "' 파일의 시트 이름을 입력하세요:", "시트 이름", "##")
+        Set ws = Workbooks(oldFileName).Worksheets(oldSheetName)
+        
+        Dim oldIdColName As String, oldDateColName As String
+        oldIdColName = InputBox("의뢰번호가 있는 열의 이름(헤더)은 무엇입니까?", "열 이름", "A") ' A열로 가정
+        oldDateColName = InputBox("의뢰일이 있는 열의 이름(헤더)은 무엇입니까?", "열 이름", "K") ' K열로 가정
+        
+        Dim oldIdColNum As Long, oldDateColNum As Long
+        oldIdColNum = ws.Rows(1).Find(oldIdColName, LookAt:=xlWhole).Column
+        oldDateColNum = ws.Rows(1).Find(oldDateColName, LookAt:=xlWhole).Column
+        
+        result = "--- [ " & oldFileName & " ] 키 생성 결과 ---" & vbCrLf
+        
+        For i = 2 To 10 ' 상위 9개 데이터만 확인
+            Dim requestID As String, requestDate As String, compositeKey As String
+            requestID = Trim(ws.Cells(i, oldIdColNum).Value)
+            requestDate = Format(ws.Cells(i, oldDateColNum).Value, "yyyy-mm-dd")
+            compositeKey = "'" & requestID & "|" & requestDate & "'"
+            result = result & "행 " & i & ": " & compositeKey & vbCrLf
+        Next i
+
+    ElseIf choice = vbNo Then
+        ' --- 새 파일(new.xlsx) 진단 ---
+        Dim newFileName As String, newSheetName As String
+        newFileName = InputBox("새 파일의 전체 이름(확장자 포함)을 입력하세요:", "파일 이름", "##.xlsx")
+        newSheetName = InputBox("'" & newFileName & "' 파일의 시트 이름을 입력하세요:", "시트 이름", "Sheet1")
+        Set ws = Workbooks(newFileName).Worksheets(newSheetName)
+        
+        Dim newDateColName As String
+        newDateColName = InputBox("의뢰일이 있는 열의 이름(헤더)은 무엇입니까?", "열 이름", "G") ' G열로 가정
+        
+        Dim newDateColNum As Long
+        newDateColNum = ws.Rows(1).Find(newDateColName, LookAt:=xlWhole).Column
+
+        result = "--- [ " & newFileName & " ] 키 생성 결과 ---" & vbCrLf
+        
+        For i = 2 To 10 ' 상위 9개 데이터만 확인
+            requestID = Trim(ws.Cells(i, "A").Value) & "-" & Trim(ws.Cells(i, "B").Value)
+            requestDate = Format(ws.Cells(i, newDateColNum).Value, "yyyy-mm-dd")
+            compositeKey = "'" & requestID & "|" & requestDate & "'"
+            result = result & "행 " & i & ": " & compositeKey & vbCrLf
+        Next i
+    End If
+
+    MsgBox result, vbInformation, "키 생성 결과 확인"
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "오류가 발생했습니다. 파일 이름, 시트 이름, 열 이름이 정확한지 확인하세요.", vbCritical
+
+End Sub
