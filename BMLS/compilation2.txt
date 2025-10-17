@@ -44,7 +44,7 @@ Sub CompareWorkbooks_AccurateFinal()
     newColComp = FindColNum(newWS, NEW_HEADER_COMP_DATE)
 
     ' --- 3. 결과 시트 준비 ---
-    Set reportWS = newWS.Sheets.Add
+    Set reportWS = newWB.Sheets.Add
     reportWS.Name = "변동사항"
     newWS.Rows(1).Range("A1:U1").Copy reportWS.Rows(1).Range("A1")
     reportWS.Cells(1, "V").Value = "변동 사유"
@@ -155,4 +155,5 @@ Private Function IsNewDateCompleted(cellValue As Variant) As Boolean
     Else
         IsNewDateCompleted = False
     End If
+
 End Function
