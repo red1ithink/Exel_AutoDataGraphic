@@ -1,0 +1,197 @@
+Sub CreateWeeklySummaryReport_WithChart()
+
+    Const DETAIL_SHEET_NAME As String = "##"
+    
+    Const SIMPLE_SHEET_NAME As String = "#"
+
+    Dim detailWS As Worksheet, simpleWS As Worksheet, reportWS As Worksheet
+    Dim detailLastRow As Long, simpleLastRow As Long
+    Dim i As Long, reportRow As Long, finalRow As Long
+    Dim startDate As Date, endDate As Date
+    Dim simpleReq As Long, simpleComp As Long
+    Dim req_Ho As Long, comp_Ho As Long, req_Hx As Long, comp_Hx As Long
+    Dim req_Hx_Px As Long, comp_Hx_Px As Long, req_Hx_Po As Long, comp_Hx_Po As Long
+    Dim cellDate As Variant, hValue As Variant
+    Dim hValueStr As String, pValueStr As String
+
+    ' --- 1. 기본 설정 ---
+    On Error Resume Next
+    Set detailWS = ThisWorkbook.Sheets(DETAIL_SHEET_NAME)
+    Set simpleWS = ThisWorkbook.Sheets(SIMPLE_SHEET_NAME)
+    On Error GoTo 0
+    
+    If detailWS Is Nothing Then MsgBox "오류: '" & DETAIL_SHEET_NAME & "' There's no sheet", vbCritical: Exit Sub
+    If simpleWS Is Nothing Then MsgBox "오류: '" & SIMPLE_SHEET_NAME & "' There's no sheet", vbCritical: Exit Sub
+    
+    On Error Resume Next
+    Set reportWS = ThisWorkbook.Sheets("주간별 현황")
+    On Error GoTo 0
+    
+    If reportWS Is Nothing Then
+        Set reportWS = ThisWorkbook.Sheets.Add(After:=detailWS)
+        reportWS.Name = "주간별 현황"
+    End If
+    reportWS.Cells.Clear
+    
+    ' --- 2. 리포트 시트에 제목(헤더) 추가 ---
+    With reportWS
+        .Range("A1").Value = "주차"
+        .Range("B1").Value = "##": .Range("C1").Value = "##"
+        .Range("D1").Value = "##": .Range("E1").Value = "##"
+        .Range("F1").Value = "##": .Range("G1").Value = "##"
+        .Range("H1").Value = "##": .Range("I1").Value = "##"
+        .Range("J1").Value = "##": .Range("K1").Value = "#"
+        .Range("L1").Value = "##"
+        .Range("M1").Value = "##": .Range("N1").Value = "##"
+        .Range("A1:N1").Font.Bold = True
+        .Range("A1:N1").HorizontalAlignment = xlCenter
+    End With
+    reportRow = 2
+    
+    ' --- 3. 주차별 데이터 집계 ---
+    detailLastRow = detailWS.Cells(detailWS.Rows.Count, "H").End(xlUp).Row
+    simpleLastRow = simpleWS.Cells(simpleWS.Rows.Count, "G").End(xlUp).Row
+    startDate = DateSerial(2024, 12, 30)
+    
+    Do While startDate < DateSerial(2025, 12, 27)
+        endDate = startDate + 6
+        simpleReq = 0: simpleComp = 0: req_Ho = 0: comp_Ho = 0: req_Hx = 0: comp_Hx = 0
+        req_Hx_Px = 0: comp_Hx_Px = 0: req_Hx_Po = 0: comp_Hx_Po = 0
+        
+        For i = 2 To simpleLastRow
+            cellDate = simpleWS.Cells(i, "G").Value
+            If IsDate(cellDate) Then If Int(cellDate) >= startDate And Int(cellDate) <= endDate Then simpleReq = simpleReq + 1
+            cellDate = simpleWS.Cells(i, "H").Value
+            If IsDate(cellDate) Then If Int(cellDate) >= startDate And Int(cellDate) <= endDate Then simpleComp = simpleComp + 1
+        Next i
+        
+        For i = 2 To detailLastRow
+            hValueStr = Trim(LCase(detailWS.Cells(i, "H").Value))
+            pValueStr = Trim(LCase(detailWS.Cells(i, "P").Value))
+            If hValueStr = "o" Then
+                cellDate = detailWS.Cells(i, "K").Value: If IsDate(cellDate) Then If Int(cellDate) >= startDate And Int(cellDate) <= endDate Then req_Ho = req_Ho + 1
+                cellDate = detailWS.Cells(i, "L").Value: If IsDate(cellDate) Then If Int(cellDate) >= startDate And Int(cellDate) <= endDate Then comp_Ho = comp_Ho + 1
+            ElseIf hValueStr = "x" Then
+                cellDate = detailWS.Cells(i, "K").Value
+                If IsDate(cellDate) Then
+                    If Int(cellDate) >= startDate And Int(cellDate) <= endDate Then
+                        req_Hx = req_Hx + 1
+                        If pValueStr = "x" Then req_Hx_Px = req_Hx_Px + 1
+                        If pValueStr = "o" Then req_Hx_Po = req_Hx_Po + 1
+                    End If
+                End If
+                cellDate = detailWS.Cells(i, "L").Value
+                If IsDate(cellDate) Then
+                    If Int(cellDate) >= startDate And Int(cellDate) <= endDate Then
+                        comp_Hx = comp_Hx + 1
+                        If pValueStr = "x" Then comp_Hx_Px = comp_Hx_Px + 1
+                        If pValueStr = "o" Then comp_Hx_Po = comp_Hx_Po + 1
+                    End If
+                End If
+            End If
+        Next i
+        
+        ' --- 4. 리포트 시트에 데이터 입력 ---
+        With reportWS
+            Dim weekNum As Integer
+            weekNum = Application.WorksheetFunction.RoundUp((Day(endDate) + Weekday(DateSerial(Year(endDate), Month(endDate), 1), 2) - 1) / 7, 0)
+            .Cells(reportRow, "A").Value = Month(endDate) & "월 " & weekNum & "주"
+            .Cells(reportRow, "B").Value = simpleReq: .Cells(reportRow, "C").Value = simpleComp
+            .Cells(reportRow, "D").Value = req_Ho: .Cells(reportRow, "E").Value = comp_Ho
+            .Cells(reportRow, "F").Value = req_Hx: .Cells(reportRow, "G").Value = comp_Hx
+            .Cells(reportRow, "H").Value = req_Hx_Px: .Cells(reportRow, "I").Value = comp_Hx_Px
+            .Cells(reportRow, "J").Value = req_Hx_Po: .Cells(reportRow, "K").Value = comp_Hx_Po
+            .Cells(reportRow, "M").Formula = "=SUM(D" & reportRow & ",F" & reportRow & ")"
+            .Cells(reportRow, "N").Formula = "=SUM(E" & reportRow & ",G" & reportRow & ")"
+        End With
+        
+        startDate = startDate + 7: reportRow = reportRow + 1
+    Loop
+    
+    ' --- 5. 최종 합계 및 서식 작업 ---
+    finalRow = reportWS.Cells(reportWS.Rows.Count, "A").End(xlUp).Row
+    If finalRow >= 2 Then
+        With reportWS
+            .Cells(finalRow + 1, "A").Value = "총 합계": .Range("A" & finalRow + 1 & ":N" & finalRow + 1).Font.Bold = True
+            Dim col As Integer
+            For col = 2 To 14
+                If col <> 12 Then .Cells(finalRow + 1, col).Formula = "=SUM(" & .Cells(2, col).Address(False, False) & ":" & .Cells(finalRow, col).Address(False, False) & ")"
+            Next col
+            .Range("A1:N" & finalRow + 1).Borders.LineStyle = xlContinuous
+        End With
+    End If
+    
+    reportWS.Columns("A:N").AutoFit
+    
+    ' --- 6. 그래프 생성 ---
+    Call Create_Summary_Chart(reportWS, finalRow)
+
+End Sub
+
+
+' *** 그래프를 생성하는 보조 매크로 ***
+Private Sub Create_Summary_Chart(ByVal ws As Worksheet, ByVal lastDataRow As Long)
+
+    Dim myChartObj As ChartObject
+    Dim myChart As Chart
+    Dim chartDataRange As Range
+    Dim chartTitle As String
+    
+    chartTitle = "주간별 작업량 추이"
+    
+    ' 차트를 위치시킬 셀 (P2 셀)
+    Dim chartLocation As Range
+    Set chartLocation = ws.Range("P2")
+    
+    ' 차트 개체 추가 (위치와 크기 지정)
+    Set myChartObj = ws.ChartObjects.Add( _
+        Left:=chartLocation.Left, _
+        Top:=chartLocation.Top, _
+        Width:=600, _
+        Height:=350)
+    
+    Set myChart = myChartObj.Chart
+    
+    ' 기존에 있던 기본 시리즈 삭제
+    Do While myChart.SeriesCollection.Count > 0
+        myChart.SeriesCollection(1).Delete
+    Loop
+    
+    ' 차트 종류 설정: 꺾은선형 (마커 포함)
+    myChart.ChartType = xlLineMarkers
+    
+    ' 차트 제목 설정
+    myChart.HasTitle = True
+    myChart.chartTitle.Text = chartTitle
+    
+    ' 범례(Legend) 설정
+    myChart.HasLegend = True
+    myChart.Legend.Position = xlLegendPositionBottom
+    
+    ' Y축(값) 제목 설정
+    myChart.Axes(xlValue).HasTitle = True
+    myChart.Axes(xlValue).AxisTitle.Text = "작업량"
+
+    ' 그래프에 표시할 데이터 시리즈를 하나씩 추가 (B, C, L열 제외)
+    Dim col As Integer
+    Dim newSeries As Series
+    
+    For col = 2 To 14 ' B열부터 N열까지
+        ' 비어있는 B, C열과 비고(L)열은 그래프에서 제외
+        If col <> 2 And col <> 3 And col <> 12 Then
+            Set newSeries = myChart.SeriesCollection.newSeries
+            With newSeries
+                ' 시리즈 이름은 헤더(1행)에서 가져옴
+                .Name = ws.Cells(1, col).Value
+                ' X축 값은 A열 (기간)
+                .XValues = ws.Range("A2:A" & lastDataRow)
+                ' Y축 값은 해당 열의 데이터
+                .Values = ws.Range(ws.Cells(2, col), ws.Cells(lastDataRow, col))
+            End With
+        End If
+    Next col
+
+End Sub
+
+
+
