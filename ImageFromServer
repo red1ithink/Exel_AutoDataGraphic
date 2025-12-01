@@ -1,0 +1,95 @@
+Sub InsertImages_AllSheets_WithCookie()
+    Dim ws As Worksheet
+    Dim lastRow As Long, i As Long
+    Dim url As String
+    Dim targetCell As Range
+    Dim shp As Shape
+    Dim httpReq As Object
+    Dim stream As Object
+    Dim tempPath As String
+    Dim myCookie As String
+    
+    ' ==========================================================
+    myCookie = "Cookie from Chrome"
+    ' ==========================================================
+
+    Application.ScreenUpdating = False
+    
+    ' 임시 파일 경로 설정
+    tempPath = Environ("Temp") & "\temp_vba_cookie.jpg"
+    
+    ' 웹 요청 객체 생성 (반복문 밖에서 한 번만 생성)
+    On Error Resume Next
+    Set httpReq = CreateObject("WinHttp.WinHttpRequest.5.1")
+    On Error GoTo 0
+    
+    ' 모든 시트 순회
+    For Each ws In ActiveWorkbook.Worksheets
+        
+        ' Q열의 마지막 행 찾기 (해당 시트 기준)
+        lastRow = ws.Cells(ws.Rows.Count, "Q").End(xlUp).Row
+        
+        ' 데이터가 2행 이상 있을 때만 작업 시작
+        If lastRow >= 2 Then
+            
+            ' 해당 시트의 행 높이 일괄 조정 (선택사항)
+            ' ws.Range("R2:R" & lastRow).RowHeight = 80
+            
+            For i = 2 To lastRow
+                url = ws.Cells(i, "Q").Value
+                Set targetCell = ws.Cells(i, "R")
+                targetCell.Value = ""
+                
+                If Len(url) > 0 Then
+                    On Error Resume Next
+                    httpReq.Open "GET", url, False
+                    
+                    httpReq.setRequestHeader "User-Agent", "##"
+                    httpReq.setRequestHeader "Cookie", myCookie
+                    
+                    httpReq.Send
+                    
+                    If httpReq.Status = 200 Then
+                        Set stream = CreateObject("ADODB.Stream")
+                        stream.Open
+                        stream.Type = 1
+                        stream.Write httpReq.responseBody
+                        stream.SaveToFile tempPath, 2
+                        stream.Close
+                        
+                        ' 이미지 삽입 (-1, -1 옵션 유지 -> 원본 크기 로드)
+                        Set shp = ws.Shapes.AddPicture(tempPath, msoFalse, msoTrue, targetCell.Left, targetCell.Top, -1, -1)
+                        
+                        If Err.Number = 0 Then
+                            With shp
+                                .LockAspectRatio = msoTrue
+                                .Height = targetCell.Height - 4 '
+                                
+                                .Placement = xlMoveAndSize 
+                                
+                                If .Width < targetCell.Width Then
+                                    .Left = targetCell.Left + (targetCell.Width - .Width) / 2
+                                End If
+                                .Top = targetCell.Top + (targetCell.Height - .Height) / 2
+                            End With
+                        Else
+                            targetCell.Value = "이미지 처리 실패"
+                        End If
+                        
+                        If Dir(tempPath) <> "" Then Kill tempPath
+                    Else
+                        targetCell.Value = "권한 없음(" & httpReq.Status & ")"
+                    End If
+                    On Error GoTo 0
+                End If
+                
+                ' 엑셀 멈춤 방지
+                If i Mod 10 = 0 Then DoEvents
+            Next i
+        End If
+        
+    Next ws ' 다음 시트로 넘어감
+    
+    Application.ScreenUpdating = True
+    MsgBox "모든 시트 작업 완료.", vbInformation
+End Sub
