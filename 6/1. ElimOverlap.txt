@@ -1,0 +1,49 @@
+Sub RemoveDuplicates_KeepFirst_H_AIJ()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim dict As Object
+    Dim uniqueKey As String
+    Dim valH As String, valA As String, valI As String, valJ As String
+    Dim deleteRange As Range
+    
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    
+    Set ws = ActiveSheet
+    
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    lastRow = ws.Cells(ws.Rows.Count, "H").End(xlUp).Row
+
+    For i = 2 To lastRow
+        valH = CStr(ws.Cells(i, "H").Value)
+        valA = CStr(ws.Cells(i, "A").Value)
+        valI = CStr(ws.Cells(i, "I").Value)
+        valJ = CStr(ws.Cells(i, "J").Value)
+        
+        uniqueKey = valH & "|" & valA & "|" & valI & "|" & valJ
+        
+        ' 딕셔너리에 키가 이미 존재하는가?
+        If dict.Exists(uniqueKey) Then
+            ' [YES] 이미 위쪽에서 등록된 키임 -> 지금 건 중복(삭제 대상)
+            If deleteRange Is Nothing Then
+                Set deleteRange = ws.Rows(i)
+            Else
+                Set deleteRange = Union(deleteRange, ws.Rows(i))
+            End If
+        Else
+            ' [NO] 처음 나온 키임 -> 딕셔너리에 등록 (이게 원본이 됨)
+            dict.Add uniqueKey, Nothing
+        End If
+    Next i
+    
+    If Not deleteRange Is Nothing Then
+        deleteRange.Delete
+    End If
+    
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    
+    MsgBox "중복 제거 완료", vbInformation
+End Sub

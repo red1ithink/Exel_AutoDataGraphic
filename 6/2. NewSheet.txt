@@ -1,0 +1,73 @@
+Sub SplitSheets_A_to_R_NoDelete()
+    Dim wsSource As Worksheet, wsNew As Worksheet
+    Dim lastRow As Long
+    Dim dict As Object
+    Dim cell As Range, rngUnique As Range
+    Dim key As Variant
+    Dim sourceRowHeight As Double
+    '125 20
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False 
+    
+    Set wsSource = ActiveSheet
+    lastRow = wsSource.Cells(wsSource.Rows.Count, "A").End(xlUp).Row
+    
+    ' [중요] 원본의 행 높이(이미지 들어있는 높이)를 기억해둠 (예: 80)
+    sourceRowHeight = wsSource.Rows(2).RowHeight
+    
+    ' 1. A열에 어떤 그룹들이 있는지 목록 만들기 (딕셔너리 사용)
+    Set dict = CreateObject("Scripting.Dictionary")
+    ' A2부터 끝까지 순회
+    For Each cell In wsSource.Range("A2:A" & lastRow)
+        If Len(cell.Value) > 0 Then
+            dict(CStr(cell.Value)) = 1 ' 중복 없는 키 목록 생성
+        End If
+    Next cell
+    
+    ' 기존 필터가 있으면 해제 (깨끗한 상태에서 시작)
+    If wsSource.AutoFilterMode Then wsSource.AutoFilterMode = False
+    
+    ' 2. 각 그룹별로 시트 생성 및 복사
+    For Each key In dict.Keys
+        ' (1) 필터 적용 (A열 기준)
+        wsSource.Range("A1:R" & lastRow).AutoFilter Field:=1, Criteria1:=key
+        
+        ' (2) 새 시트 추가
+        Set wsNew = Sheets.Add(After:=Sheets(Sheets.Count))
+        
+        ' 시트 이름 변경 (에러 방지 처리 포함)
+        On Error Resume Next
+        wsNew.Name = Left(key, 30) ' 엑셀 시트명 길이 제한(31자) 고려
+        If Err.Number <> 0 Then Err.Clear ' 이름 겹치거나 특수문자 있으면 무시(기본이름 사용)
+        On Error GoTo 0
+        
+        ' (3) 데이터 복사 (보이는 셀만)
+        wsSource.Range("A1:R" & lastRow).SpecialCells(xlCellTypeVisible).Copy
+        
+        With wsNew.Range("A1")
+            ' 열 너비 먼저 복사 (이미지 위치 잡기 위해)
+            .PasteSpecial Paste:=xlPasteColumnWidths
+            ' 데이터, 서식, 이미지 모두 붙여넣기
+            .PasteSpecial Paste:=xlPasteAll
+        End With
+        
+        ' (4) [핵심] 행 높이 원상복구
+        ' 붙여넣기 하면 행 높이가 기본값(15)으로 줄어들 수 있어서 강제로 늘려줌
+        ' 제목줄(1행) 제외하고 2행부터 끝까지 높이 적용
+        On Error Resume Next
+        wsNew.Range("A2:A" & wsNew.Cells(wsNew.Rows.Count, "A").End(xlUp).Row).RowHeight = sourceRowHeight
+        On Error GoTo 0
+        
+        ' A1 셀 선택 (깔끔하게)
+        wsNew.Range("A1").Select
+    Next key
+    
+    ' 3. 마무리
+    wsSource.Activate
+    wsSource.AutoFilterMode = False ' 원본 필터 해제
+    Application.CutCopyMode = False
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+    
+    MsgBox "시트 분리 완료", vbInformation
+End Sub

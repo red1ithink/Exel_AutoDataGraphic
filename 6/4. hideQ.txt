@@ -1,0 +1,12 @@
+Sub HideColumnQ_AllSheets()
+    Dim ws As Worksheet
+    
+    Application.ScreenUpdating = False
+    
+    For Each ws In ActiveWorkbook.Worksheets
+        ws.Columns("Q").Hidden = True
+    Next ws
+    
+    Application.ScreenUpdating = True
+    MsgBox "Every Q was hidden.", vbInformation
+End Sub
